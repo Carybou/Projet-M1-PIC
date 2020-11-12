@@ -1,0 +1,114 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage[latin1,utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french, francais]{babel}
+\usepackage{fullpage}
+\usepackage{url}
+
+\usepackage{pgf}
+\usepackage{tikz}
+\usepackage{pgfgantt}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+
+\title{Rapport projet PIC}
+
+\begin{document}
+
+\maketitle
+
+\section{Solution $\Delta u = f$}
+\label{delta u}
+
+On cherche à résoudre l'équation $\Delta u = f$ d'inconnue $u$, avec $\Delta u$ laplacien de u, dans $\mathcal{R}^d$.
+
+$$
+\begin{array}{rclr}
+
+\Delta u &=& f \\
+
+\sum\limits_{n=1}^d {\partial x_n}^2 u(x) &=& f(x) \\
+
+\sum\limits_{n=1}^d (ik_n)^2 \widehat{u}(k) &=& \widehat{f}(k) & \text{par transformée de Fourier} \\
+
+-|k|^2 \times \widehat{u}(k) &=& \widehat{f}(k) & \text{si } \widehat{f}(0)=0 \\
+
+\end{array}
+$$
+
+Notons $\mathcal{N} (x) = \sum\limits _{k \in \mathbb{Z}^{d*}} \frac{1}{|k|^2} e^{ik.x}$. En fourier $\widehat{\mathcal{N}}(k) = \frac{1}{|k|^2}$.
+
+D'où :
+
+$$
+\begin{array}{rclr}
+
+\widehat{u} (k) &=& - \mathcal{N}(k) \times \widehat{f} (k) \\
+
+u(x) &=& - (\mathcal{N} \ast f) (x)
+
+\end{array}
+$$
+
+\section{Application à Vaslov}
+
+L'équation de Vaslov d'inconnue $f$, fonction de $x$, $v$ et $t$ est :
+$$
+\partial_t f + v \partial_x f - \partial_ x \Phi \partial_v f = 0
+$$
+
+Avec : $\Delta \Phi [f](x,t) = - \int f(x,v,t) dv + \frac{1}{2 \pi} \int \int f(x, v , t) dx dv$, potentiel d'intéraction.
+
+D'apès la partie \ref{delta u}, $\Phi[f](x,t) = (\mathcal{N} \ast \int f(x,v,t)dv) (t)$, en supposant $\Delta \Phi [f]$ de moyenne nulle.
+
+Soit $(X,V) = (X_k(t),V_k(t))_{k \in [\![ 1, N]\!]}$ une solution apporché de la fonction de distribution représentant $N$ méta particules de position à l'instant $t$ $X_k(t)$ et de vitesse $V_k(t)$. On a pour toutes méta particules $k$ :
+
+$$
+\left\lbrace
+\begin{array}{rcl}
+
+\frac{dX_k}{dt} &=& V_k \\ \\
+\frac{dV_k}{dt} &=& \partial \Phi(X_k, t) \\
+
+\end{array} \right.
+$$
+
+En discrétisant le temps, on considère à présent les instants $(t^0, t^1, \dots)$ d'intervalle $\Delta t$. Chaque méta particule est donc représenté par deux suites $(X_k^n, V_k^n)_{n _in \mathbb{N}}$.
+
+$$
+\left\lbrace
+\begin{array}{rcl}
+
+\frac{X_k^{n+1} - X_k^n}{\Delta t} &=& V_k^{n+1} \\ \\
+\frac{V_k^{n+1} - V_k^n}{\Delta t} &=& \partial \Phi (X_k^n , t^n)\\
+
+\end{array} \right.
+$$
+
+Faisons l'hypothèse que $f^n(X,V) = \sum\limits_k \beta_k \delta_{X_k^n} \delta_{ V_k^n}$, avec $f^n(X,V) = f(X,V, t^n)$.
+
+Ainsi :
+
+$$
+\begin{array}{rcl}
+
+\Phi[f](x,t^n) &=& (\mathcal{N} \ast \int f(x,v,t^n)dv) (t^n) \\
+	&=& (\mathcal{N} \ast \int \sum\limits_k \beta_k \delta_{X_k^n} \delta_{ V_k^n}dv) (t^n) \\
+	&=& (\mathcal{N} \ast \sum\limits_k \beta_k \delta_{X_k^n} \int \delta_{ V_k^n}dv) (t^n) \\
+	&=& (\mathcal{N} \ast \sum\limits_k \beta_k \delta_{X_k^n}) (t^n) \\
+	&=& \int \mathcal{N}(x-y) \sum\limits_k \beta_k \delta_{X_k^n}(y) dy \\
+	&=& \sum\limits_k \beta_k  \int \mathcal{N}(x-y) \delta_{X_k^n}(y) dy \\
+	&=& \sum\limits_k \beta_k  \mathcal{N}(x-X_k^n) \\
+
+\end{array}
+$$
+
+Et ainsi : 
+$$
+\frac{V_k^{n+1} - V_k^n}{\Delta t} = \sum\limits_l \beta_l  \mathcal{N}'(X_k^n-X_l^n)
+$$
+
+\end{document}
