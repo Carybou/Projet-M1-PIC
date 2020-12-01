@@ -13,12 +13,18 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{mathrsfs}
+\usepackage{xcolor}
+
+\newcommand{\carybe}[1]{ \textcolor{magenta}{#1}}
 
 \title{Rapport projet PIC}
 
 \begin{document}
 
 \maketitle
+$$
+f_0(x,v,t) = \frac{n_0}{2 \pi v_{th}^2} ( 1 + \alpha cos(k_x x))
+ exp( - \frac{v_x^2+v_y^2}{2 v_{th}^2})$$
 
 \section{Solution $\Delta u = f$}
 \label{delta u}
@@ -30,11 +36,11 @@ $$
 
 \Delta u &=& f \\
 
-\sum\limits_{n=1}^d {\partial x_n}^2 u(x) &=& f(x) \\
+\sum\limits_{n=1}^d {\partial^2_ {x_n}} u(x) &=& f(x) \\
 
 \sum\limits_{n=1}^d (ik_n)^2 \widehat{u}(k) &=& \widehat{f}(k) & \text{par transformée de Fourier} \\
 
--|k|^2 \times \widehat{u}(k) &=& \widehat{f}(k) & \text{si } \widehat{f}(0)=0 \\
+-|k|^2  \widehat{u}(k) &=& \widehat{f}(k) & \text{si } \widehat{f}(0)=0 \\
 
 \end{array}
 $$
@@ -55,35 +61,23 @@ $$
 
 \section{Application à Vaslov}
 
-L'équation de Vaslov d'inconnue $f$, fonction de $x$, $v$ et $t$ est :
+L'équation de Vaslov d'inconnue $f$, fonction de $x \in [0, 2 \pi]$, $v$ et $t$ est :
 $$
 \partial_t f + v \partial_x f - \partial_ x \Phi \partial_v f = 0
 $$
 
-Avec : $\Delta \Phi [f](x,t) = - \int f(x,v,t) dv + \frac{1}{2 \pi} \int \int f(x, v , t) dx dv$, potentiel d'intéraction.
+Avec : $\Delta \Phi [f](x,t) =  - \int f(x,v,t) dv +  \carybe{\frac{1}{2 \pi}} \int \int f(x, v , t) dx dv$, potentiel d'intéraction.
 
 D'apès la partie \ref{delta u}, $\Phi[f](x,t) = (\mathcal{N} \ast \int f(x,v,t)dv) (t)$, en supposant $\Delta \Phi [f]$ de moyenne nulle.
 
-Soit $(X,V) = (X_k(t),V_k(t))_{k \in [\![ 1, N]\!]}$ une solution apporché de la fonction de distribution représentant $N$ méta particules de position à l'instant $t$ $X_k(t)$ et de vitesse $V_k(t)$. On a pour toutes méta particules $k$ :
+Soit $(X,V, \beta) = (X_k(t),V_k(t), \beta_k)_{k \in [\![ 1, N]\!]}$ une solution apporché de la fonction de distribution représentant $N$ méta particules de position à l'instant $t$ $X_k(t)$, de vitesse $V_k(t)$ et de masse donnée $\beta_k \in \mathbb{R^+}$. On a pour toutes méta particules $k$ :
 
 $$
 \left\lbrace
 \begin{array}{rcl}
 
 \frac{dX_k}{dt} &=& V_k \\ \\
-\frac{dV_k}{dt} &=& \partial \Phi(X_k, t) \\
-
-\end{array} \right.
-$$
-
-En discrétisant le temps, on considère à présent les instants $(t^0, t^1, \dots)$ d'intervalle $\Delta t$. Chaque méta particule est donc représenté par deux suites $(X_k^n, V_k^n)_{n _in \mathbb{N}}$.
-
-$$
-\left\lbrace
-\begin{array}{rcl}
-
-\frac{X_k^{n+1} - X_k^n}{\Delta t} &=& V_k^{n+1} \\ \\
-\frac{V_k^{n+1} - V_k^n}{\Delta t} &=& \partial \Phi (X_k^n , t^n)\\
+\frac{dV_k}{dt} &=& - \partial_x \Phi(X_k, t) \\
 
 \end{array} \right.
 $$
@@ -96,7 +90,7 @@ $$
 \begin{array}{rcl}
 
 \Phi[f](x,t^n) &=& (\mathcal{N} \ast \int f(x,v,t^n)dv) (t^n) \\
-	&=& (\mathcal{N} \ast \int \sum\limits_k \beta_k \delta_{X_k^n} \delta_{ V_k^n}dv) (t^n) \\
+	&=&  (\mathcal{N} \ast \int \sum\limits_k \beta_k \delta_{X_k^n} \delta_{ V_k^n}dv) (t^n) \\
 	&=& (\mathcal{N} \ast \sum\limits_k \beta_k \delta_{X_k^n} \int \delta_{ V_k^n}dv) (t^n) \\
 	&=& (\mathcal{N} \ast \sum\limits_k \beta_k \delta_{X_k^n}) (t^n) \\
 	&=& \int \mathcal{N}(x-y) \sum\limits_k \beta_k \delta_{X_k^n}(y) dy \\
@@ -108,7 +102,126 @@ $$
 
 Et ainsi : 
 $$
-\frac{V_k^{n+1} - V_k^n}{\Delta t} = \sum\limits_l \beta_l  \mathcal{N}'(X_k^n-X_l^n)
+\boxed{\frac{d V_k} {dt} = -\sum\limits_{l=1}^N \beta_l  \mathcal{N}'(X_k^n-X_l^n)}
 $$
+
+En discrétisant le temps, on considère à présent les instants $(t^0, t^1, \dots)$ d'intervalle $\Delta t$. Chaque méta particule est donc représenté par deux suites $(X_k^n, V_k^n)_{n \in \mathbb{N}}$.
+
+$$
+\left\lbrace
+\begin{array}{rclr}
+
+\frac{X_k^{n+1} - X_k^n}{\Delta t} &=& V_k^{n+1} & (1) \\ \\
+\frac{V_k^{n+1} - V_k^n}{\Delta t} &=& - \sum\limits_{l = 1}^N \beta_l  \mathcal{N}'(X_k^n-X_l^n) & (2)\\
+
+\end{array} \right.
+$$
+
+L'équation $(1)$ est implicite, pour résoudre ce système, il faut procéder en 2 deux temps :
+
+$$
+\phi _ v ^{\Delta t} \left\lbrace
+\begin{array}{rclr}
+
+\frac{X_k^{n+1} - X_k^n}{\Delta t} &=& 0  \\ \\
+\frac{V_k^{n+1} - V_k^n}{\Delta t} &=& - \sum\limits_{l = 1}^N \beta_l  \mathcal{N}'(X_k^n-X_l^n)\\
+
+\end{array} \right.
+$$
+
+$$
+\phi _T ^{\Delta t}  \left\lbrace
+\begin{array}{rclr}
+
+\frac{X_k^{n+1} - X_k^n}{\Delta t} &=& V_k^{n+1} \\ \\
+\frac{V_k^{n+1} - V_k^n}{\Delta t} &=& 0\\
+
+\end{array} \right.
+$$
+
+On résoudre en premier le système $\phi _v$ pour calculer $V_k^{n+1}$ puis le système $\phi _t$ pour calculer $X_k^{n+1}$.
+
+$$
+(X_k^{n+1}, V_k^{n+1}) = (\phi_T^{\Delta t} \circ \phi_v^{\Delta t}) (X_k^{n}, V_k^{n})
+$$
+
+\section{Changement de variables pour obtenir un système Hamiltonien canonique}
+
+On peut résumer ces équations à un système Hamiltonien non cannonnique :
+
+$$
+H(X,V) = \frac{1}{2} \sum \limits_{k} \beta_k v_k^2 + \frac{1}{2} \sum \limits _{k, l} \beta_k \beta_l \mathcal{N}(x_k - x_l)
+$$
+
+Avec :
+$$
+\left\lbrace
+\begin{array}{rcl}
+	\dot{x_k} &=& \frac{1}{\beta_k} \partial_{v_k} H \\
+	\dot{v_k} &=& - \frac{1}{\beta_k} \partial_{x_k} H \\
+
+\end{array}
+\right.
+$$
+
+Pour le rendre canonique posons le changement de variables : 
+
+$$
+\left\lbrace
+\begin{array}{rcl}
+	y_k &=& \sqrt{\beta_k} x_k \\
+	z_k &=& \sqrt{\beta_k} v_k \\
+\end{array}
+\right.
+$$
+
+En définissant $\beta$ la matrice diagonale ayant les paramètres $(\beta_i)$ sur sa diagonale  et $\beta_2$ la matrice $(2N,2N)$ diagonale par bloc ayant $\beta$ sur sa diagonale, on peut définir le hamiltonien $K$ :
+
+$$
+\beta = \left( \begin{array}{cccc}
+					\beta_1 & 0  &\dots & 0 \\
+					0 & \beta_2  &\dots & 0 \\
+					\vdots  & \vdots  & \ddots &\vdots  \\
+					0 & \dots & 0 & \beta_N
+\end{array} \right)
+$$
+
+$$
+\beta_2 = \left( \begin{array}{cccc}
+					\beta & 0  \\
+					0 & \beta  
+\end{array} \right)
+$$
+
+$$
+\nabla K(Y,Z) = \sqrt{\beta_2^{-1}} \nabla H(X,V) = \left( \begin{array}{c}
+	
+	\frac{1}{\sqrt{\beta_1}}\partial_{x_1} H(X,V) \\
+	\vdots \\
+	\frac{1}{\sqrt{\beta_N}}\partial_{x_N} H(X,V) \\
+	\frac{1}{\sqrt{\beta_1}}\partial_{v_1} H(X,V) \\
+	\vdots \\
+	\frac{1}{\sqrt{\beta_N}}\partial_{v_N} H(X,V) 
+
+\end{array} \right)
+$$
+
+\carybe{$K(Y,Z) = H(Y,Z)$ a vérifier mais normalement ça marche}
+
+Notons qu'avec la notation $\beta$, on a : $Y = \sqrt{\beta} X$ et $Z = \sqrt{\beta}V$.
+
+Ainsi, on a bien un système hamiltonien canonique
+$$\left( \begin{array}{cc}
+ Y \\ Z
+\end{array} \right) = J \nabla K
+$$
+
+avec $J = \left( \begin{array}{cc}
+ 0 & I \\ -I & 0
+\end{array} \right)$
+
+\carybe{notons somme des betas = 1 donc ils sont petits et on veut pas inverser des betas petit}
+
+\carybe{dans le cas ou les betas sont variables (collisons et/ou terme source) ça peut être intéressant}
 
 \end{document}
