@@ -1,7 +1,5 @@
 using Sobol
 
-export Mesh1D
-
 """
 Describe the universe of the plasma : one dimension, between 2 bounds xmin and xmax
 """
@@ -19,19 +17,18 @@ struct Mesh1D
 
 end
 
-export Particles
-
 """
 Describe meta particules, represented by a Dirac disbtibution in (x, v), with a weight (~a high) of wei
 """
-struct Particles
+struct Particules
 
     x #list of the positions
     v #list of the velocities
     wei #list of the weights of the particules
+    nbpart #nulber of particules
 
-    function Particles(x0, v0, wei)
-        new(x0, v0, wei)
+    function Particules(x0, v0, wei, nbpart)
+        new(x0, v0, wei, nbpart)
     end
 end
 
@@ -49,22 +46,32 @@ function kernel_d(x, n)
     return(sum(im/k * exp(im * k * x) for k in -1*n:n if k != 0))
 end
 
-export update_positions!
-
 """
 update particle position xp (phi_T)
 """
+function mod_float(p, xmin, xmax)
+    new_p = []
+    for x in p
+        if Real(x) > xmax
+            push!(new_p,x - xmax + xmin)
+        elseif real(x) < xmin
+            push!(new_p,xmax - (xmin - x))
+        else push!(new_p,x)
+        end
+    end
+    return new_p
+end
+
 function update_positions!(p, mesh, dt)
 
     xmin = mesh.xmin
     xmax = mesh.xmax
 
     p.x .+= p.v .* dt
+    p.x .= mod_float(p.x, xmin, xmax)
     #faire un modulo sans int
 
 end
-
-export update_velocities!
 
 """
 update particle velocities vp (phi_v)
@@ -81,32 +88,9 @@ function update_velocities!(p, k, dt)
 end
 
 """
-generated random samples
-"""
-function random_generation(nsamples, mesh, vmin, vmax, f0)
-    x0 = []
-    v0 = []
-    wei = []
-    s = SobolSeq(1)
-
-    for i=1:nsamples
-        x = Sobol.next!(s)
-        x = pop!(x)
-        x = (1-x)* mesh.xmin + x*mesh.xmax
-        v = Sobol.next!(s)
-        v = pop!(v)
-        v = (1-v) * vmin + v*vmax
-        push!(x0, f0(x))
-        push!(v0, v)
-        push!(wei, 1/nsamples)
-    end
-    return (x0, v0, wei)
-end
-
-"""
 ```math
 f_0(x,v,t) = \\frac{n_0}{2π v_{th}^2} ( 1 + \\alpha cos(k_x x))
- exp( - \\frac{v^2}{2 v_{th}^2})
+ exp( - \\frac{v^2}{    2 v_{th}^2})
 ```
 The newton function solves the equation ``P(x)-r=0`` with Newton’s method
 ```math
@@ -116,6 +100,8 @@ with
 ```math
 P(x) = \\int_0^x (1 + \\alpha cos(k_x y)) dy = x + \\frac{\\alpha}{k_x} sin(k_x x)
 ```
+
+voir package dictrbution.jl
 """
 
 function samples(nsamples, alpha, kx)
@@ -145,4 +131,70 @@ function samples(nsamples, alpha, kx)
         push!(wei, 2*pi/kx/nsamples)
     end
     return x0, v0, wei
+end
+
+"""
+compute rho, dcharge density (ie int f dv)
+"""
+function compute_rho( p, m )
+
+   xmin = m.xmin
+   xmax = m.xmax
+   nx = m.nx
+   dx = m.dx
+   rho = zeros(nx + 1)
+
+   for ipart=1:p.nbpart
+
+      xp = p.x[ipart]
+
+  i = Int(floor(Real(xp) / dx) + 1) #number of the cell with the particule
+
+      dum = p.wei[ipart] / dx
+
+      mx_i = (i-1) * dx
+      mx_j = i * dx
+
+      a1 = (mx_j-xp) * dum
+      a2 = (xp-mx_i) * dum
+
+      rho[i]     +=  a1
+      rho[i+1]   +=  a2
+
+   end
+
+   rho[nx+1] += rho[1]
+   rho[1] = rho[nx + 1]
+
+   rho ./= dx
+
+   rho_total  = sum(rho[1:nx]) * dx
+
+   return rho, rho_total
+end
+
+
+"""
+int E^2(t,x) dx entre xmin et xmax (energie elec, dont on sonnait l evolution temp)
+    avec E = - der_x phi, der_x E = rho_tot, calculer avec poisson
+"""
+
+function compute_phi(rho, mesh, matrix_poisson)
+    dx = mesh.dx
+    return matrix_poisson \ rho .* -dx^2
+end
+
+function compute_E(phi, mesh)
+    dx = mesh.dx
+    e = phi
+    e[end] = 0.0
+    e .= (circshift(e, 1) .- circshift(e, -1)) ./ (2dx)
+    return e
+end
+
+function compute_int_E(p, mesh, matrix_poisson)
+    dx = mesh.dx
+    rho, rho_t = compute_rho(p, mesh)
+    E = compute_E(rho, mesh)
+    return sum(E .^2) * dx
 end
