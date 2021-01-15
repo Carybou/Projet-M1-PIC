@@ -45,6 +45,17 @@ Define the derivate kernel of the model, is n = 1 kernel = cos (HMF model)
 function kernel_d(x, n)
     return(sum(im/k * exp(im * k * x) for k in -1*n:n if k != 0))
 end
+""" attention ffttd donc facteur dans la somme  a voir """
+
+function compute_S_C(p, n)
+    S = []
+    C = []
+    for k in 1:n
+        push!(S, sum(p.wei .* sin.(k .* p.x)))
+        push!(C, sum(p.wei .* cos.(k .* p.x)))
+    end
+    return S, C
+end
 
 """
 update particle position xp (phi_T)
@@ -79,12 +90,27 @@ update particle velocities vp (phi_v)
 function update_velocities!(p, k, dt)
 
     to_add=[]
+    phi = []
     for position in p.x
-        to_push = - dt * sum(p.wei .* kernel_d.(position .- p.x, k))
-        push!(to_add, to_push)
+        to_push = - sum(p.wei .* kernel_d.(position .- p.x, k))
+        push!(to_add, dt * to_push)
+        push!(phi, to_push)
     end
-    p.v .+= to_add #reverse ?
+    p.v .+= to_add
+    return phi
+end
 
+function update_velocities_S_C!(p, n, dt)
+    S, C = compute_S_C(p, n)
+    to_add = []
+    phi = []
+    for position in p.x
+        to_push =  sum([2/k * (cos(k*position) * S[k] - sin(k*position) * C[k]) for k in 1:n])
+        push!(to_add, - dt * to_push)
+        push!(phi, to_push)
+    end
+    p.v .+= to_add
+    return phi
 end
 
 """
@@ -168,26 +194,31 @@ function compute_rho( p, m )
 
    rho ./= dx
 
-   rho_total  = sum(rho[1:nx]) * dx
+   rho_total  = sum(rho[1:nx]) * dx / (xmax - xmin)
 
    return rho, rho_total
 end
 
-
 """
-int E^2(t,x) dx entre xmin et xmax (energie elec, dont on sonnait l evolution temp)
+int E^2(t,x) dx entre xmin et xmax (energie elec, dont on connait l evolution temp)
     avec E = - der_x phi, der_x E = rho_tot, calculer avec poisson
+    - laplacien phi = rho -> difference finie
 """
 
-function compute_phi(rho, mesh, matrix_poisson)
+function compute_phi(rho, rho_total, mesh, matrix_poisson)
     dx = mesh.dx
-    return matrix_poisson \ rho .* -dx^2
+    xmin = mesh.xmin
+    xmax = mesh.xmax
+    phi = matrix_poisson \ ((rho .- rho_total) .* -dx^2 )
+        # - rho_total car le monde est circulaire, sol périodique
+    phi_total = sum(phi) * dx / (xmax - xmin)
+    return phi .- phi_total # - phi_total densité car centré en 0
 end
 
 function compute_E(phi, mesh)
     dx = mesh.dx
-    e = phi
-    e[end] = 0.0
+    e = 0 .* phi
+    e[1:end] .= phi[1:end]
     e .= (circshift(e, 1) .- circshift(e, -1)) ./ (2dx)
     return e
 end
@@ -195,6 +226,13 @@ end
 function compute_int_E(p, mesh, matrix_poisson)
     dx = mesh.dx
     rho, rho_t = compute_rho(p, mesh)
-    E = compute_E(rho, mesh)
+    phi = compute_phi(rho, mesh, matrix_poisson)
+    E = compute_E(phi, mesh)
     return sum(E .^2) * dx
 end
+
+"""
+calcul energie elec potentielle et cinétique avec le hamiltonien
+
+debug pas de temps de 10 ité pour voir l evolution de E et H
+"""
