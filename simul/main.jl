@@ -40,7 +40,7 @@ function run(nstep, dt, L, k, np, nx, alpha)
 end
 
 nstep = 100
-dt = 0.1
+dt = 0.2
 L = 2pi/0.5
 k = 1 #paramètre de troncature du noyau
 np = 100000 #nb de particules
