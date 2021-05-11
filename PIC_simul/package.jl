@@ -3,18 +3,17 @@ using Random
 using Distributions
 
 """
-Describe the universe of the plasma : one dimension, between 2 bounds xmin and xmax
+Describe the universe of the plasma : one dimension, between 2 bounds 0 and L
 """
 struct Mesh1D
 
-   xmin
-   xmax
+   L
    nx #number of samples in the uniserve
    dx #distance between 2 samples
 
-   function Mesh1D( xmin, xmax, nx)
-       dx = (xmax - xmin) / nx
-       new(xmin, xmax, nx, dx)
+   function Mesh1D( L, nx)
+       dx = L / nx
+       new(L, nx, dx)
    end
 
 end
@@ -49,7 +48,7 @@ function kernel_d(x, n)
 end
 """ attention ffttd donc facteur dans la somme  a voir """
 
-""" S[k] = \\sum_l=1^n {\\beta_l * sin(l x_l)} et C[k] = \\sum_l=1^n {\\beta_l * cos(l x_l)}
+""" S[k] = \\sum_l=1^n {\\beta_l * sin(k kx x_l)} et C[k] = \\sum_l=1^n {\\beta_l * cos(k kx x_l)}
 utile pour le calcul de la vitesse et du potentiel electrique phi"""
 function compute_S_C(p, n, kx)
     S = []
@@ -64,13 +63,13 @@ end
 """
 update particle position xp (phi_T)
 """
-function mod_float(p, xmin, xmax)
+function mod_float(p, L)
     new_p = []
     for x in p
-        if Real(x) > xmax
-            push!(new_p,x - xmax + xmin)
-        elseif real(x) < xmin
-            push!(new_p,xmax - (xmin - x))
+        if Real(x) > L
+            push!(new_p,x - L)
+        elseif real(x) < 0
+            push!(new_p,L + x)
         else push!(new_p,x)
         end
     end
@@ -78,11 +77,10 @@ function mod_float(p, xmin, xmax)
 end
 
 function update_positions!(p, mesh, dt)
-    xmin = mesh.xmin
-    xmax = mesh.xmax
+    L = mesh.L
 
     p.x .+= p.v .* dt
-    p.x .= mod_float(p.x, xmin, xmax)
+    p.x .= mod_float(p.x, L)
 end
 
 """
@@ -90,24 +88,23 @@ update particle velocities vp (phi_v)
 """
 function update_velocities!(p, n, dt, kx)
     S, C = compute_S_C(p, n, kx)
-    to_add = []
+    der_phi = []
     phi = []
     for position in p.x
-        to_push = - dt * sum([2/(2pi*k*kx) * (cos(k*kx*position) * S[k] -
-                                    sin(k*kx*position) * C[k]) for k in 1:n])
-        to_push_e = sum([1/(2pi*(k*kx)^2) * (cos(k*kx*position) * C[k] -
-                                        sin(k*kx*position) * S[k]) for k in 1:n])
-        push!(to_add, to_push)
-        push!(phi, to_push_e)
+        der_phi_x = - sum([1/(pi*k) * (sin(k*kx*position) * C[k] -
+                                        cos(k*kx*position) * S[k]) for k in 1:n])
+        phi_x = sum([1/(pi*k^2*kx) * (cos(k*kx*position) * C[k] -
+                                    sin(k*kx*position) * S[k]) for k in 1:n])
+        push!(der_phi, der_phi_x)
+        push!(phi, phi_x)
     end
-    p.v .+= to_add
-    return phi
+    p.v .+=  - dt .* der_phi
+    return phi, der_phi
 end
 
 """
 ```math
-f_0(x,v,t) = \\frac{n_0}{2π v_{th}^2} ( 1 + \\alpha cos(k_x x))
- exp( - \\frac{v^2}{2})
+f_0(x,v,t) = \\frac{1}{2π} ( 1 + \\alpha cos(k_x x))exp( - \\frac{v^2}{2})
 ```
 The newton function solves the equation ``P(x)-r=0`` with Newton’s method
 ```math
@@ -117,38 +114,9 @@ with
 ```math
 P(x) = \\int_0^x (1 + \\alpha cos(k_x y)) dy = x + \\frac{\\alpha}{k_x} sin(k_x x)
 ```
-
-voir package dictrbution.jl
 """
 
 function samples(nsamples, alpha, kx)
-    function newton(r)
-        x1, x2 = 0.0, 1.0
-        r *= 2π / kx
-        while (abs(x2-x1) > 1e-12)
-            p = x1 + alpha * sin( kx * x1) / kx
-            f = 1 + alpha * cos( kx * x1)
-            x1, x2 = x2, x1 - (p - r) / f
-        end
-        return x2
-    end
-    x0 = []
-    v0 = []
-    wei = []
-    s = SobolSeq(1)
-    for i=1:nsamples
-        #v = sqrt(-2 * log( (i-0.5)/nsamples)) * rand([-1,1])
-        v = randn()
-        x = pop!(Sobol.next!(s))
-        x = newton(x)
-        push!(x0, x)
-        push!(v0, v)
-        push!(wei, 2*pi/kx/nsamples)
-    end
-    return x0, v0, wei
-end
-
-function samples_2(nsamples, alpha, kx)
     function newton(r)
         x1, x2 = 0.0, 1.0
         r *= 2π / kx
@@ -177,8 +145,7 @@ compute rho, dcharge density (ie int f dv)
 """
 function compute_rho( p, m )
 
-   xmin = m.xmin
-   xmax = m.xmax
+   L = m.L
    nx = m.nx
    dx = m.dx
    rho = zeros(nx + 1)
@@ -191,8 +158,8 @@ function compute_rho( p, m )
       mx_j = i * dx
       a1 = (mx_j-xp) * dum
       a2 = (xp-mx_i) * dum
-      rho[i]     +=  a1
-      rho[i+1]   +=  a2
+      rho[i]   += a1
+      rho[i+1] += a2
    end
 
    rho[nx+1] += rho[1]
@@ -200,23 +167,26 @@ function compute_rho( p, m )
 
    rho ./= dx
 
-   rho_total  = sum(rho[1:nx]) * dx / (xmax - xmin)
+   rho_total  = sum(rho[1:nx]) * dx / L
    return rho, rho_total
 end
 
 """
-int E^2(t,x) dx entre xmin et xmax (energie elec, dont on connait l evolution temp)
+int E^2(t,x) dx entre 0 et L (energie elec, dont on connait l evolution temp)
     avec E = - der_x phi, der_x E = rho_tot, calculer avec poisson
     - laplacien phi = rho -> difference finie
 """
 
-function compute_phi(rho, rho_total, mesh, matrix_poisson)
+function compute_phi(rho, rho_total, mesh)
     dx = mesh.dx
-    xmin = mesh.xmin
-    xmax = mesh.xmax
+    L = mesh.L
+    nx = mesh.nx
+    matrix_poisson = spdiagm(-1 => ones(Float64,nx-1),
+                                0 => -2*ones(Float64,nx+1),
+                                1 => ones(Float64,nx-1))
     phi = matrix_poisson \ ((rho .- rho_total) .* -dx^2 )
         # - rho_total car le monde est circulaire, sol périodique
-    phi_total = sum(phi) * dx / (xmax - xmin)
+    phi_total = sum(phi) * dx / L
     return phi .- phi_total # - phi_total densité car centré en 0
 end
 
@@ -228,10 +198,10 @@ function compute_E(phi, mesh)
     return e
 end
 
-function compute_int_E(p, mesh, matrix_poisson)
+function compute_int_E(p, mesh)
     dx = mesh.dx
     rho, rho_t = compute_rho(p, mesh)
-    phi = compute_phi(rho, rho_t, mesh, matrix_poisson)
+    phi = compute_phi(rho, rho_t, mesh)
     E = compute_E(phi, mesh)
     return sum(E .^2) * dx
 end
