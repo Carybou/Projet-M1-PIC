@@ -56,18 +56,3 @@ plot(time, energy_tot)
 plot(time, log.(sqrt.(energy_pic)), label="PIC", xlabel = "time")
 plot!(time, log.(sqrt.(max.(energy_hamil_elec, 0.0000000001))), label = "Hamiltonian")
 plot!(time, log.(sqrt.(energy_elec_from_phi)), label = "Potential")
-
-
-# faire distribution     / check 3 méthodes de calcul de phi (PIC (ok), hamiltonien (ok), exact et th)
-# coeff dans calcul hamiltonien avec TFD N(x) = \sum 1/(2pi*(k*kx)^2) exp(i*kx*k*x) x \in [0, 2pi/kx],
-# qui est C ? (1/2pi ?)
-# constante 1/xmax - xmin -> 2/xmax-xmin d'ou ca sort ? E0 = _delta X phi0 = -2 alpha sin(kx x) (+- constante)
-#nbde particules 100 000 car sinon bruit du sampling ne capture pas l amortissement de l'energie
-# dans le calcul de l hamiltponien int E ² dx = int phi(int f dv) dx (calculer int E ² au lieu de sum)
-#vérifier dans le calcul de energy hamil elec pourquoi on a des valeurs négatives
-#calculer taux d amortissement de log ||E||L2 et comparer à la valmeur théorique (-0.15t)
-# beta k = L/nbsamples -> pk ?
-#taux d amor => dans valsov f ~ f0 + epsilon f1 -> on linéarise
-#d_x E = int f dv - 1 -> int E0 ^2 dx nous donne l ordonnée a l origine (~pi epsilonn^2 / kx^3)
-#voir livre p 65 (p62 formule de l energie theorique)
-# energy_tot = 1/2(2pi/k + alpha^2pi/k^3)

@@ -32,11 +32,13 @@
 
 \section{Résumé}
 
-Lors de ce projet, j'ai implémenté une résolution de l'équation de Vlasov en Julia. Mon code se base sur la notion de méta particules et l'hypothèse que la fonction de distribution de probabilité des particules est une somme de Dirac en espace et en vitesse. Les particules sont représentées en une dimension. 
+Lors de ce projet, j'ai implémenté une résolution de l'équation de Vlasov en Julia. J'ai été encadré par Nicolas Crouseilles et Erwan Faou de l'équipe Mingus de l'Inria de Rennes.
+
+Mon code se base sur la notion de méta particules et l'hypothèse que la fonction de distribution de probabilité des particules est une somme de Dirac en espace et en vitesse. Les particules sont représentées en une dimension. 
 
 Les différents paramètres sur lesquels l'utilisateur peut jouer sont :
 \begin{itemize}
-	\item \Python{nstep} le nombre d'étapes de calcul ;
+	\item \Python{nstep} le nombre d'itérations ;
 	\item \Python{dt} le pas de temps ;
 	\item \Python{L} la taille du domaine en espace (le domaine est en réalité un cercle). De \Python{L} est débuit \Python{kx} ;
 	\item \Python{k} le paramètre du troncature du noyau (voir section \ref{noyau});
@@ -51,10 +53,10 @@ La fonction \Python{run} renvoit :
 	\item \Python{energy_pic} l'intégrale de l'énergie électrique calculée selon la méthode PIC (voir section \ref{energie PIC}) ;
 	\item \Python{energy_elec_from_phi} l'intégrale de l'énergie électrique calculée à partir du potentiel électrique (voir section \ref{energy pot}) ;
 	\item \Python{energy_tot} l'énergie totale du système ;
-	\item \Python{anime} le gif représentant l'évolution des particules au cours du temps (généré par la suite par \Python{gif(anime)}).
+	\item \Python{anime} le gif représentant l'évolution des particules au cours du temps (généré par la suite par la commande \Python{gif(anime)}).
 \end{itemize}
 
-L'ensemble du code est disponible sur un github . 
+L'ensemble du code est disponible sur le git \url{https://github.com/Carybou/Projet-M1-PIC}. La fonction \Python{run} se trouve dans le fichier \Python{simul/main.jl}. À la fin du fichier, je propose une exécution de \Python{run} ainsi que l'affichage de l'énergie totale et du logarithme de l'énergie électrique calculée selon les 3 méthodes de la section \ref{energy}.
 
 \section{Solution $\Delta u = f$}
 \label{delta u}
@@ -91,12 +93,12 @@ $$
 
 \section{Application à Vlasov}
 
-L'équation de Vlasov d'inconnue $f$, fonction de $x \in [0, 2 \pi]$, $v$ et $t$ est :
+L'équation de Vlasov d'inconnue $f$, fonction de $x \in [0, L]$, $v$ et $t$ est :
 $$
 \partial_t f + v \partial_x f - \partial_ x \Phi \partial_v f = 0
 $$
 
-Avec : $\Delta \Phi [f](x,t) =  - \int f(x,v,t) dv +  \frac{1}{2 \pi} \int \int f(x, v , t) dx dv$, potentiel d'intéraction.
+Avec : $\Delta \Phi [f](x,t) =  - \int f(x,v,t) dv +  \frac{1}{L} \int \int f(x, v , t) dx dv$, potentiel d'intéraction.
 
 D'après la partie \ref{delta u}, $\Phi[f](x,t) = (\mathcal{N} \ast \int f(x,v,t)dv) (t)$, en supposant $\Delta \Phi [f]$ de moyenne nulle.
 
@@ -175,10 +177,27 @@ $$
 (X_k^{n+1}, V_k^{n+1}) = (\Phi_T^{\Delta t} \circ \Phi_v^{\Delta t}) (X_k^{n}, V_k^{n})
 $$
 
+On peut résumer ces équations à un système Hamiltonien non cannonnique :
+
+$$
+H(X,V) = \frac{1}{2} \sum \limits_{k} \beta_k v_k^2 + \frac{1}{2} \sum \limits _{k, l} \beta_k \beta_l \mathcal{N}(x_k - x_l)
+$$
+
+Avec :
+$$
+\left\lbrace
+\begin{array}{rcl}
+	\dot{x_k} &=& \frac{1}{\beta_k} \partial_{v_k} H \\
+	\dot{v_k} &=& - \frac{1}{\beta_k} \partial_{x_k} H \\
+
+\end{array}
+\right.
+$$
+
 \section{Échantillonage initial}
 \label{samples}
 
-La solution $f_0$ de l'équation de Vlasov au temps inital est :
+Notre solution $f_0$ de l'équation de Vlasov au temps inital est :
 $$
 f_0(x,v,t) = \frac{1}{2 \pi} ( 1 + \alpha cos(k_x x))
  exp( - \frac{v^2}{2})
@@ -197,85 +216,6 @@ $$
 avec $r \in [0, 1]$ choisi aléatoirement. Cette équation est résolue grâce à la méthode de Newton.
 
 L'échantillonage est fait dans la fonction \Python{samples}.
-
-\section{Changement de variables pour obtenir un système Hamiltonien canonique}
-
-On peut résumer ces équations à un système Hamiltonien non cannonnique :
-
-$$
-H(X,V) = \frac{1}{2} \sum \limits_{k} \beta_k v_k^2 + \frac{1}{2} \sum \limits _{k, l} \beta_k \beta_l \mathcal{N}(x_k - x_l)
-$$
-
-Avec :
-$$
-\left\lbrace
-\begin{array}{rcl}
-	\dot{x_k} &=& \frac{1}{\beta_k} \partial_{v_k} H \\
-	\dot{v_k} &=& - \frac{1}{\beta_k} \partial_{x_k} H \\
-
-\end{array}
-\right.
-$$
-
-Pour le rendre canonique posons le changement de variables : 
-
-$$
-\left\lbrace
-\begin{array}{rcl}
-	y_k &=& \sqrt{\beta_k} x_k \\
-	z_k &=& \sqrt{\beta_k} v_k \\
-\end{array}
-\right.
-$$
-
-En définissant $\beta$ la matrice diagonale ayant les paramètres $(\beta_i)$ sur sa diagonale  et $\beta_2$ la matrice $(2N,2N)$ diagonale par bloc ayant $\beta$ sur sa diagonale, on peut définir le hamiltonien $K$ :
-
-$$
-\beta = \left( \begin{array}{cccc}
-					\beta_1 & 0  &\dots & 0 \\
-					0 & \beta_2  &\dots & 0 \\
-					\vdots  & \vdots  & \ddots &\vdots  \\
-					0 & \dots & 0 & \beta_N
-\end{array} \right)
-$$
-
-$$
-\beta_2 = \left( \begin{array}{cccc}
-					\beta & 0  \\
-					0 & \beta  
-\end{array} \right)
-$$
-
-$$
-\nabla K(Y,Z) = \sqrt{\beta_2^{-1}} \nabla H(X,V) = \left( \begin{array}{c}
-	
-	\frac{1}{\sqrt{\beta_1}}\partial_{x_1} H(X,V) \\
-	\vdots \\
-	\frac{1}{\sqrt{\beta_N}}\partial_{x_N} H(X,V) \\
-	\frac{1}{\sqrt{\beta_1}}\partial_{v_1} H(X,V) \\
-	\vdots \\
-	\frac{1}{\sqrt{\beta_N}}\partial_{v_N} H(X,V) 
-
-\end{array} \right)
-$$
-
-\carybe{$K(Y,Z) = H(Y,Z)$ a vérifier mais normalement ça marche}
-
-Notons qu'avec la notation $\beta$, on a : $Y = \sqrt{\beta} X$ et $Z = \sqrt{\beta}V$.
-
-Ainsi, on a bien un système hamiltonien canonique
-$$\left( \begin{array}{cc}
- \dot{Y} \\ \dot{Z}
-\end{array} \right) = J \nabla K
-$$
-
-avec $J = \left( \begin{array}{cc}
- 0 & I \\ -I & 0
-\end{array} \right)$
-
-\carybe{notons somme des betas = 1 donc ils sont petits et on veut pas inverser des betas petit}
-
-\carybe{dans le cas ou les betas sont variables (collisons et/ou terme source) ça peut être intéressant}
 
 \section{Calcul de la constante $C$}
 \label{noyau}
@@ -392,7 +332,8 @@ $$
 \end{array}
 $$
 
-\subsection{Cacul de l'Énergie électrique $\int_{x_{min}}^{x_{max}} E^2(x,t)dx$}
+\subsection{Cacul de l'Énergie électrique $\int_{0}^{L} E^2(x,t)dx$}
+\label{energy}
 
 \subsubsection{Cas 1 : calcul de $E(x,t)$ via le potentiel}
 \label{energy pot}
@@ -402,8 +343,8 @@ On a $E(x,t) = - \frac{\partial \Phi}{\partial t}(x)$.
 D'où pour $t = t^n$:
 $$
 \begin{array}{rcl}
-\int_{x_{min}}^{x_{max}} E^2(x,t^n)dx &=& \int_{x_{min}}^{x_{max}} (\frac{\partial \Phi}{\partial x}(x))^2dx \\
- &=& \sum\limits_{l=1}^{N} (\frac{\partial \Phi}{\partial x}(X_l^n))^2 \times \frac{x_{max}-x_{min}}{N}
+\int_{0}^{L} E^2(x,t^n)dx &=& \int_{0}^{L} (\frac{\partial \Phi}{\partial x}(x))^2dx \\
+ &=& \sum\limits_{l=1}^{N} (\frac{\partial \Phi}{\partial x}(X_l^n))^2 \times \frac{L}{N}
 \end{array}
 $$
 
@@ -414,10 +355,10 @@ avec $\frac{\partial \Phi}{\partial t}(X_l^n)$ calculé dans \Python{update_velo
 
 $$
 \begin{array}{rcl}
-\int_{x_{min}}^{x_{max}} E^2(x,t^n)dx &=& \int_{x_{min}}^{x_{max}} \Phi(x,t)(\int_{\mathbb{R}} f(x,v,t^n) dv) dx\\
- &=& \int_{x_{min}}^{x_{max}} \Phi(x,t^n)(\int_{\mathbb{R}} \sum\limits_{l=1}^N \beta_l \delta(x-X_l^n) \delta(v -  V_l^n) dv) dx\\
- &=& \int_{x_{min}}^{x_{max}} \Phi(x,t^n)(\sum\limits_{l=1}^N \beta_l \delta(x -X_l^n)) dx\\
- &=& \sum\limits_{l=1}^N \int_{x_{min}}^{x_{max}} \beta_l \Phi(x,t^n)	\delta(x -X_l^n)) dx\\
+\int_{0}^{L} E^2(x,t^n)dx &=& \int_{0}^{L} \Phi(x,t)(\int_{\mathbb{R}} f(x,v,t^n) dv) dx\\
+ &=& \int_{0}^{L} \Phi(x,t^n)(\int_{\mathbb{R}} \sum\limits_{l=1}^N \beta_l \delta(x-X_l^n) \delta(v -  V_l^n) dv) dx\\
+ &=& \int_{0}^{L} \Phi(x,t^n)(\sum\limits_{l=1}^N \beta_l \delta(x -X_l^n)) dx\\
+ &=& \sum\limits_{l=1}^N \int_{0}^{L} \beta_l \Phi(x,t^n)	\delta(x -X_l^n)) dx\\
  &=& \sum\limits_{l=1}^N  \beta_l \Phi(X_l^n, t^n) \\
 \end{array}
 $$
@@ -490,7 +431,7 @@ Le champ électrique est calculé dans \Python{compute_E}.
 \end{subfigure}
 \end{figure}
 
-La figure \ref{gif} représente la répartition des particules en position et vitesse pour kx = 0.5 et une perturbation initiale de $\alpha = 0.1$. L'ammortissement de Landau associé est en figure \ref{amort}. Sont représentées les trois méthodes de calcul de l'énergie vues précédement en traçant le logarithme néperien de la norme $L_2$ du champ électrique soit $\log(\sqrt{\int_{xmin}^{xmax} E^2(x,t) dx})$. On observe que la méthode PIC n'est plus efficace au delà de 15s alors que le sdeux autres méthodes donnent toujours des résultats cohérents. Cet effet est d'autant plus visible pour des petites perturbations comme sur les figures \ref{amort2} et \ref{amort3}, pour des valuers de $\alpha$ de 0.05 et 0.01.
+La figure 1 représente la répartition des particules en position et vitesse pour kx = 0.5 et une perturbation initiale de $\alpha = 0.1$. L'ammortissement de Landau associé est en figure \ref{amort}. Sont représentées les trois méthodes de calcul de l'énergie vues précédement en traçant le logarithme néperien de la norme $L_2$ du champ électrique soit $\log(\sqrt{\int_{0}^{L} E^2(x,t) dx})$. On observe que la méthode PIC n'est plus efficace au delà de 15s alors que les deux autres méthodes donnent toujours des résultats cohérents. Cet effet est d'autant plus visible pour des petites perturbations comme sur les figures \ref{amort2} et \ref{amort3}, pour des valuers de $\alpha$ de 0.05 et 0.01.
 
 \begin{figure}
 	\centering
